@@ -1,15 +1,16 @@
 import os
+
+import lazyslide as zs
 import pandas as pd
 import torch
+from wsidata import open_wsi
 
-from omegaconf import OmegaConf
 from src.utils.config import load_config
 
-from wsidata import open_wsi
-import lazyslide as zs
 
 def is_mps() -> bool:
     return torch.backends.mps.is_available()
+
 
 def main(config_path="config.yaml"):
     cfg = load_config(config_path)
@@ -83,6 +84,7 @@ def main(config_path="config.yaml"):
 
         print(f"[save] {slide_id} -> {out_path}")
         adata.write_h5ad(out_path)
+
 
 if __name__ == "__main__":
     main()

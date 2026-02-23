@@ -1,26 +1,24 @@
 paths:
-  slides_csv: "data/slides.csv"          # columns: slide_id, slide_path, label (optional in preprocess)
+  slides_csv: "data/slides.csv"
   out_dir: "artifacts"
   log_dir: "tb_logs"
 
 preprocess:
   thumbnail_plot: true
   find_tissues: true
-  tile_size_px: 128                       # your example uses 128
-  tiles_key: "tiles"                      # LazySlide uses a tiles key; keep stable
-  feature_model: "plip"                   # "plip" as in your snippet
-  amp: true                               # mix precision if supported
-  force_no_amp_on_mps: true               # avoids NaNs on MPS
+  tile_size_px: 128
+  tiles_key: "tiles"
+  feature_model: "HOptimus0"
+  amp: true
+  force_no_amp_on_mps: true
   overwrite: false
 
 bags:
-  # Convert LazySlide AnnData features to MIL-ready tensors
-  features_key: "plip_tiles"              # convention "{model}_{tiles_key}"
-  max_instances: 6000                     # cap M for memory (optional); null means no cap
-  save_format: "pt"                       # pt is simplest for torch
-  store_slide_feats: true                 # keep per-instance features
-  store_coords: true                      # keep tile coordinates if available
-  store_attention_mask: true              # always useful
+  max_instances: 6000
+  save_format: "pt"
+  store_slide_feats: true
+  store_coords: true
+  store_attention_mask: true
 
 train:
   seed: 42
@@ -33,8 +31,8 @@ train:
   devices: "auto"
 
 model:
-  # ABMIL params
-  in_dim: "auto"                          # auto-detect from bags
+  name: "abmil"
+  in_dim: "auto"
   embed_dim: 512
   attn_dim: 384
   num_fc_layers: 1
@@ -43,6 +41,5 @@ model:
   num_classes: 2
 
 splits:
-  # simplest: list slide_ids per split; can also be regex or fractions
   train_ids: "data/train_ids.txt"
   val_ids: "data/val_ids.txt"

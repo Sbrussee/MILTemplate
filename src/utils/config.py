@@ -1,6 +1,8 @@
-from dataclasses import dataclass
-from omegaconf import OmegaConf, DictConfig
+from __future__ import annotations
+
+from omegaconf import DictConfig, OmegaConf
+
 
 def load_config(path: str) -> DictConfig:
-    cfg = OmegaConf.load(path)
-    return cfg
+    """Load YAML configuration as OmegaConf ``DictConfig``."""
+    return OmegaConf.load(path)

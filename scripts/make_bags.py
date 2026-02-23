@@ -1,9 +1,11 @@
 import os
+
+import anndata as ad
 import pandas as pd
 import torch
-import anndata as ad
 
 from src.utils.config import load_config
+
 
 def main(config_path="config.yaml"):
     cfg = load_config(config_path)
@@ -53,15 +55,16 @@ def main(config_path="config.yaml"):
 
         payload = {
             "slide_id": slide_id,
-            "h": h,                        # (M, D)
-            "y": label,                    # int or None
-            "attn_mask": attn_mask,        # (M,)
+            "h": h,  # (M, D)
+            "y": label,  # int or None
+            "attn_mask": attn_mask,  # (M,)
         }
         if coords is not None:
             payload["coords"] = coords
 
         torch.save(payload, out_path)
         print(f"[bag] {slide_id}: M={M} D={h.shape[1]} -> {out_path}")
+
 
 if __name__ == "__main__":
     main()
