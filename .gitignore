@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.so
+
+# Virtual environments
+.venv/
+venv/
+
+# uv
+uv.lock
+
+# Lightning
+lightning_logs/
+tb_logs/
+
+# WSI artifacts
+artifacts/
+*.h5ad
+*.pt
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Testing
+.pytest_cache/
+.mypy_cache/
