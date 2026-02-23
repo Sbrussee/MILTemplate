@@ -1,331 +1,125 @@
-## Annotation Format
-slide_id,slide_path,label
-GTEX-11DXX-1626, data/.../GTEX-11DXX-1626.svs, 0
+# Minimal WSI → MIL Template
 
-Minimal, modular Whole Slide Image (WSI) → MIL → ABMIL training pipeline.
+A clean and extensible computational pathology pipeline for:
 
-This repository provides a clean end-to-end workflow for:
+1. WSI preprocessing + tiling with **LazySlide**
+2. Tile feature extraction (default: **HOptimus0**)
+3. MIL bag creation
+4. Model training/evaluation/inference (default: **ABMIL**)
 
-Processing raw WSIs (.svs, etc.)
+For richer feature/model options, see:
+- LazySlide: https://github.com/rendeirolab/lazyslide
+- MIL-Lab: https://github.com/mahmoodlab/MIL-Lab
 
-Tissue detection and tiling (LazySlide + wsidata)
+## Installation
 
-Feature extraction (e.g. PLIP)
-
-Converting slide features to MIL-ready bags
-
-Training an Attention-based MIL (ABMIL) model in PyTorch Lightning
-
-Evaluating and saving trained models
-
-The design goal is:
-
-Single configuration file (config.yaml)
-
-Reproducible
-
-Modular
-
-Research-friendly
-
-Scales to multi-GPU training
-
-Overview of the Pipeline
-Raw WSI (.svs)
-    ↓
-Tissue detection + tiling
-    ↓
-Tile-level feature extraction (PLIP, etc.)
-    ↓
-AnnData feature storage (.h5ad)
-    ↓
-Convert to MIL bag format (.pt)
-    ↓
-Train ABMIL (PyTorch Lightning)
-    ↓
-Evaluate / Save model
-Repository Structure
-mil-lightning/
-│
-├── config.yaml
-├── pyproject.toml
-├── README.md
-│
-├── preprocess_wsi.py        # WSI → tiles → features (.h5ad)
-├── make_bags.py             # .h5ad → MIL bags (.pt)
-├── train.py                 # Train ABMIL
-│
-└── src/mil_lightning/
-    ├── models/
-    │   └── abmil.py
-    ├── lightning/
-    │   └── lit_abmil.py
-    ├── data/
-    │   ├── bag_dataset.py
-    │   └── datamodule.py
-    └── utils/
-Installation (Using uv)
-
-This project uses modern Python packaging via pyproject.toml.
-
-1️⃣ Install uv (if not installed)
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-Restart your shell if needed.
-
-2️⃣ Create environment and install dependencies
-
-From the project root:
-
+### 1) Create environment
+```bash
 uv venv
-uv sync
-
-This will:
-
-Create .venv/
-
-Install PyTorch, Lightning, LazySlide, wsidata, etc.
-
-Install the project in editable mode
-
-Activate the environment:
-
 source .venv/bin/activate
-Configuration
+uv sync
+```
 
-All behavior is controlled from:
+### 2) Prepare metadata
+Create `data/slides.csv`:
 
-config.yaml
-
-This file defines:
-
-Input slide paths
-
-Tiling parameters
-
-Feature extraction model
-
-MIL bag settings
-
-Model hyperparameters
-
-Training configuration
-
-You should only modify this file.
-
-Step 1 — Process Raw WSIs
-
-This step performs:
-
-Open WSI
-
-Tissue detection
-
-Tiling
-
-Feature extraction (e.g. PLIP)
-
-Save features as .h5ad
-
-Prepare slide metadata
-
-Create:
-
-data/slides.csv
-
-Format:
-
+```csv
 slide_id,slide_path,label
 SLIDE_001,/path/to/slide1.svs,0
 SLIDE_002,/path/to/slide2.svs,1
-Run preprocessing
-python preprocess_wsi.py --config config.yaml
-
-Outputs:
-
-artifacts/features_anndata/{slide_id}.h5ad
-
-Each file contains tile-level embeddings.
-
-Step 2 — Convert Features to MIL Bags
-
-This step:
-
-Loads .h5ad
-
-Extracts feature matrix
-
-Converts to torch tensors
-
-Saves as .pt bags
-
-python make_bags.py --config config.yaml
-
-Outputs:
-
-artifacts/bags_pt/{slide_id}.pt
-
-Each file contains:
-
-{
-  "slide_id": str,
-  "h": Tensor[M, D],
-  "y": int,
-  "attn_mask": Tensor[M]
-}
-
-These are ready for MIL training.
-
-Step 3 — Train ABMIL
-
-Train using PyTorch Lightning:
-
-python train.py --config config.yaml
-
-This will:
-
-Load MIL bags
-
-Automatically infer feature dimension (if in_dim: auto)
-
-Train ABMIL
-
-Log to TensorBoard
-
-Save best checkpoint
-
-Monitor Training
-
-Start TensorBoard:
-
-tensorboard --logdir tb_logs
-
-Open:
-
-http://localhost:6006
-
-You will see:
-
-train/loss
-
-train/acc
-
-val/loss
-
-val/acc
-
-Step 4 — Evaluate a Trained Model
-
-The best checkpoint is printed at the end of training:
-
-Best checkpoint: tb_logs/abmil/version_x/checkpoints/abmil-xx.ckpt
-
-You can load it manually:
-
-import torch
-from mil_lightning.models.abmil import ABMIL
-
-ckpt = torch.load("path/to/checkpoint.ckpt")
-
-model = ABMIL(...)
-model.load_state_dict(ckpt["state_dict"])
-model.eval()
-
-Or extend train.py to add a test stage via Lightning.
-
-Step 5 — Save / Export Model
-
-You can save the model weights in multiple ways.
-
-Save full Lightning checkpoint (default)
-
-Already saved during training.
-
-Save only model weights
-torch.save(model.state_dict(), "abmil_weights.pt")
-TorchScript export (for inference deployment)
-model.eval()
-example = torch.randn(1, 100, model.in_dim)
-traced = torch.jit.trace(model.forward_head, example)
-traced.save("abmil_head.pt")
-
-For full model export, wrap forward appropriately.
-
-Reproducibility
-
-Set seed in config.yaml:
-
-train:
-  seed: 42
-
-Lightning will handle deterministic behavior where possible.
-
-Advanced Notes
-Attention Visualization
-
-If tile coordinates are stored in bags (coords field), you can:
-
-Extract attention weights
-
-Map weights back to slide space
-
-Render heatmaps
-
-This requires minimal extension to the validation step.
-
-Distributed Training
-
-Set in config.yaml:
-
-train:
-  accelerator: gpu
-  devices: 4
-
-Lightning will automatically handle DDP.
-
-Large Slides
-
-For very large slides:
-
-Increase max_instances limit
-
-Or implement random tile sampling per epoch
-
-Consider gradient accumulation
-
-Common Issues
-AMP on MPS gives NaNs
-
-Disable in config:
-
-preprocess:
-  amp: false
-openslide errors
-
-Install system dependency:
-
-sudo apt-get install openslide-tools
-
-(macOS users may need brew install openslide)
-
-Minimal Example Workflow
-uv sync
-python preprocess_wsi.py --config config.yaml
-python make_bags.py --config config.yaml
-python train.py --config config.yaml
-tensorboard --logdir tb_logs
-What This Repository Is Not
-
-Not a full digital pathology framework
-
-Not a slide viewer
-
-Not a feature extraction research library
-
-It is a clean, minimal MIL research pipeline designed for:
-
-Slide-level classification
-
-Experimentation with attention-based pooling
-
-Fast iteration
+```
+
+Create split files:
+- `data/train_ids.txt`
+- `data/val_ids.txt`
+
+(one `slide_id` per line)
+
+## Step-by-step usage
+
+### Step 1: preprocess WSIs
+```bash
+python scripts/preprocess_wsi.py --config config.yaml
+```
+Outputs: `artifacts/features_anndata/{slide_id}.h5ad`
+
+### Step 2: build MIL bags
+```bash
+python scripts/make_bags.py --config config.yaml
+```
+Outputs: `artifacts/bags_pt/{slide_id}.pt`
+
+Expected bag schema:
+- `slide_id: str`
+- `h: Tensor[M, D]` (instance features)
+- `y: int`
+- `attn_mask: Tensor[M]` (1=valid)
+- optional `coords: Tensor[M, 2]`
+
+### Step 3: train
+```bash
+python scripts/train.py --config config.yaml
+```
+
+### Step 4: evaluate
+```bash
+python scripts/eval.py --config config.yaml --ckpt path/to/model.ckpt --split val
+```
+
+### Step 5: inference
+```bash
+python scripts/inference.py --config config.yaml --bag artifacts/bags_pt/SLIDE_001.pt --ckpt path/to/model.ckpt
+```
+
+### Step 6: package model for sharing
+```bash
+python scripts/save_model.py --config config.yaml --ckpt path/to/model.ckpt --out artifacts/model_package.pt
+```
+This creates:
+- packaged weights/config `.pt`
+- companion metadata `.json`
+
+## Configuration guide
+
+All behavior is controlled in `config.yaml`.
+
+### Model selection
+- Default model is ABMIL:
+  ```yaml
+  model:
+    name: abmil
+  ```
+- You can also specify any importable model class:
+  ```yaml
+  model:
+    name: my_package.my_module:MyMILModel
+  ```
+  It must implement the same MIL interface.
+
+### Feature extractor selection
+- Default extractor is:
+  ```yaml
+  preprocess:
+    feature_model: HOptimus0
+  ```
+- You can set any LazySlide-supported extractor name.
+
+## Extension instructions
+
+### Add a new MIL model
+1. Implement a class under `src/model/` inheriting `MIL`.
+2. Register short-name in `src/model/factory.py` or use full import path in config.
+3. Add tests in `tests/test_model_*.py`.
+
+### Add custom preprocessing/feature extraction
+1. Keep I/O schema (`.h5ad` → `.pt`) unchanged for compatibility.
+2. Add extractor option to `config.yaml`.
+3. Verify with integration tests (`pytest -q`).
+
+## Testing
+```bash
+ruff check . --fix
+ruff format .
+ruff check .
+pytest -q
+```
